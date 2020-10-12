@@ -1,0 +1,129 @@
+/*
+ *******************************************************************************
+ *              (C) Copyright 2020 Delft University of Technology              *
+ * Created: 12/10/2020                                                         *
+ *                                                                             *
+ * Programmer(s):                                                              *
+ * - Someone's computer                                                        *
+ *                                                                             *
+ * Description:                                                                *
+ *  This is an automatically generated ROS2 source file                        *
+ *                                                                             *
+ *******************************************************************************
+*/
+
+#include <chrono>
+#include <memory>
+#include "rclcpp/rclcpp.hpp"
+{{- range .Includes}}
+#include "{{.}}"
+{{- end}}
+
+// Some placeholders
+using std::placeholders::_1;
+
+{{$sys := .}}
+{{range .Nodes}}
+class {{.Name}} : public rclcpp::Node
+{
+private:
+{{- range .Methods}}
+    {{$out := .}}// Callback {{.Name}}: Timers, Subscribers, Publishers
+    {{- if .IsTimer}}
+    rclcpp::TimerBase::SharedPtr timer_{{.Name}};
+    {{- end}}
+    {{- range .Subs}}
+    rclcpp::Subscription<{{$out.MsgType}}>::SharedPtr sub_{{$out.Name}}_{{.}};
+    {{- end}}
+    {{- range .Pubs}}
+    rclcpp::Publisher<{{$out.MsgType}}>::SharedPtr pub_{{$out.Name}}_{{.}};
+    {{- end}}
+{{- end}}
+{{range .Methods}}
+{{$out := .}}
+    void {{.Name}} ({{range $index, $element := .Params}}{{if $index}}, {{end}}{{.}}{{end}})
+    {
+    	// WCET
+    	std::chrono::time_point<std::chrono::steady_clock>, std::chrono::nanoseconds>
+    		now, start = std::chrono::steady_clock::now();
+    	std::chrono::nanoseconds wcet = std::chrono::nanoseconds({{.WCET}});
+    	while ((std::chrono::steady_clock::now() - start) < duration);
+
+    	// TODO: Handle sync setup
+
+    	// TODO: Publish
+		{{- $length := len $out.Pubs}}
+		{{- if eq $length 0}}
+    	{{- else}}
+    	{{.MsgType}} msg;
+    	{{- range .Pubs}}
+    	pub_{{$out.Name}}_{{.}}->publish(msg);
+    	{{- end}}
+    	{{- end}}
+    }
+{{end}}
+public:
+	{{.Name}}(): Node("{{.Name}}"{{range .Params}}, {{.}}{{end}})
+	{
+		{{- $out := .}}
+		// Init all timers
+		{{- range .Methods}}
+	    {{- if .IsTimer}}
+	    {{- if $sys.IsPrio}}
+		timer_{{.Name}} = this->create_wall_timer(std::chrono::nanoseconds({{.Period}}), 
+			std::bind(&{{$out.Name}}::{{.Name}}, this), nullptr, {{.Priority}});
+		{{- else}}
+		timer_{{.Name}} = this->create_wall_timer(std::chrono::nanoseconds({{.Period}}), 
+			std::bind(&{{$out.Name}}::{{.Name}}, this), nullptr);		
+		{{- end}}
+	    {{- end}}
+		{{- end}}
+
+		// Init all publishers
+		{{- range .Methods}}
+		{{- $method := .}}
+		{{- range .Pubs}}
+		pub_{{$method.Name}}_{{.}} = this->create_publisher<{{$method.MsgType}}>("{{.}}", 10);
+		{{- end}}
+		{{- end}}
+
+		// Init all subscribers
+		{{- range .Methods}}
+		{{- $method := .}}
+		{{- range .Subs}}
+		{{- if $sys.IsPrio}}
+		sub_{{$method.Name}}_{{.}} = this->create_priority_subscription<{{$method.MsgType}}>("{{.}}", 10, std::bind(&{{$out.Name}}::{{$method.Name}}, this, _1), {{$method.Priority}});
+		{{- else}}
+		sub_{{$method.Name}}_{{.}} = this->create_subscription<{{$method.MsgType}}>("{{.}}", 10, std::bind(&{{$out.Name}}::{{$method.Name}}, this, _1));
+		{{- end}}
+		{{- end}}
+		{{- end}}
+	}
+}
+{{end}}
+
+int main (int argc, char *argv[])
+{
+	rclcpp::init(argc, argv);
+
+	// Init nodes
+	{{- range .Nodes}}
+	auto node_{{.Name}} = std::make_shared<{{.Name}}>();
+	{{- end}}
+
+	// Init executor
+	{{.Type}} exec({{range $index, $element := .Params}}{{if $index}}, {{end}}{{.}}{{end}});
+
+	// Add nodes to executor
+	{{- range .Nodes}}
+	exec.add_node(node_{{.Name}});
+	{{- end}}
+
+	// Spin executor
+	exec.spin();
+
+	// Stop
+	rclcpp::shutdown();
+
+	return EXIT_SUCCESS;
+}
