@@ -171,7 +171,7 @@ func main () {
 	subs_1, pubs_1 := &[]*string{}, &[]*string{&topic}
 	subs_2, pubs_2 := &[]*string{&topic}, &[]*string{}
 	prio_1, prio_2 := int64(0), int64(0)
-	name_1, name_2 := "sensor", "on_sensor"
+	name_1, name_2 := "sense", "on_sensor"
 	params_1, params_2 := &[]*string{}, &[]*string{&msg_param}
 	is_timer_1, is_timer_2 := true, false
 	period_1, period_2 := int64(1000000000), int64(0)
@@ -179,7 +179,7 @@ func main () {
 	sync_1, sync_2 := false, false
 
 	n_param := "rclcpp::NodeOptions().start_parameter_event_publisher(false)"
-	n_name_1, n_name_2 := "sensor", "controller"
+	n_name_1, n_name_2 := "Sensor", "Controller"
 	n_pars_1, n_pars_2 := &[]*string{&n_param}, &[]*string{&n_param}
 
 	// Make methods
@@ -192,7 +192,12 @@ func main () {
 
 	// Make executor
 	include := "std_msgs/msg/int64.hpp"
-	executor := Executor{Name: "Foo", Type: "rclcpp::executors::SingleThreadedExecutor", IsPrio: false, Includes: &[]*string{&include}, Params: &[]*string{}, Nodes: &[]*Node{&n1, &n2}}
+	exec_p_1 := "rclcpp::ExecutorOptions()"
+	exec_p_2 := "{50,99}"
+	exec_p_3 := "rclcpp::executors::P_FP"
+	exec_pars := &[]*string{&exec_p_1, &exec_p_2, &exec_p_3};
+
+	executor := Executor{Name: "Foo", Type: "rclcpp::executors::PreemptivePriorityExecutor", IsPrio: true, Includes: &[]*string{&include}, Params: exec_pars, Nodes: &[]*Node{&n1, &n2}}
 
 	// Make app
 	package_1 := "std_msgs"

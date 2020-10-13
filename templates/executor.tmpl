@@ -44,10 +44,10 @@ private:
     void {{.Name}} ({{range $index, $element := .Params}}{{if $index}}, {{end}}{{.}}{{end}})
     {
     	// WCET
-    	std::chrono::time_point<std::chrono::steady_clock>, std::chrono::nanoseconds>
+    	std::chrono::time_point<std::chrono::steady_clock, std::chrono::nanoseconds>
     		now, start = std::chrono::steady_clock::now();
     	std::chrono::nanoseconds wcet = std::chrono::nanoseconds({{.WCET}});
-    	while ((std::chrono::steady_clock::now() - start) < duration);
+    	while ((std::chrono::steady_clock::now() - start) < wcet);
 
     	// TODO: Handle sync setup
 
@@ -99,7 +99,7 @@ public:
 		{{- end}}
 		{{- end}}
 	}
-}
+};
 {{end}}
 
 int main (int argc, char *argv[])
@@ -112,8 +112,13 @@ int main (int argc, char *argv[])
 	{{- end}}
 
 	// Init executor
+	{{- $length := len .Params}}
+	{{- if eq $length 0}}
+	{{.Type}} exec;
+	{{- else}}
 	{{.Type}} exec({{range $index, $element := .Params}}{{if $index}}, {{end}}{{.}}{{end}});
-
+	{{- end}}
+	
 	// Add nodes to executor
 	{{- range .Nodes}}
 	exec.add_node(node_{{.Name}});
